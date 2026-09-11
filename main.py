@@ -16,5 +16,17 @@ print(f"listening on port {PORT}")
 while True:
         c_socket, c_address = s_socket.accept()
         print(c_socket, c_address)
-        req = c_socket.recv(1024).decode()
-        print(req)
+        req = c_socket.recv(1024).decode() # string conversion
+        # print(req)
+        headers = req.split('\n')
+        http_method = headers[0].split()[0]
+        path = headers[0].split()[1]
+        # print(http_method)
+
+        if path == '/':
+            in_file = open('index.html')
+            data = in_file.read()
+            in_file.close()
+            response = ('HTTP/1.1 200 OK\n\n' + data).encode() # byte conversion
+            c_socket.sendall(response)
+            c_socket.close()
