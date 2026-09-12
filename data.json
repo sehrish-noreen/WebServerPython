@@ -1,4 +1,10 @@
-{"name": "sehrish", "id": "3"},
-{"name": "sehrish", "id": "3"},
-{"name": "sehrish", "id": "3"},
-{"name": "sehrish", "id": "3"}
+[
+  {
+    "id": 2,
+    "name": "sehrish"
+  },
+  {
+    "id": 3,
+    "name": "noreen"
+  }
+]
