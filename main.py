@@ -1,5 +1,10 @@
+from json.decoder import JSONDecodeError
+
+from builtins import FileNotFoundError, OSError
+
 import socket
 import os
+import json
 
 HOST = "0.0.0.0"
 PORT = 8080
@@ -17,8 +22,7 @@ print(f"listening on port {PORT}")
 while True:
         c_socket, c_address = s_socket.accept()
         print("connection from client: ", c_address)
-        req = c_socket.recv(1024).decode('utf-8') # string conversion
-        print(f"raw request {req}")
+        req = c_socket.recv(1024).decode('utf-8') # fix todo
 
         # skipping empty requests
         if not req.strip():
@@ -42,44 +46,77 @@ while True:
         if http_method == 'GET':
             if path == '/':
                 try:
-                    with open('data.json', 'r') as in_file:
-                        data = in_file.read().strip()
-                    data = '[\n' + data + '\n]' if data else '[]'
-                    response = ('HTTP/1.1 200 OK\r\n\r\n' + data)
+                    # read data file
+                    try:
+                        with open('data.json', 'r', encoding='utf-8') as file:
+                            content = file.read().strip()
+                            data = json.loads(content) if content else []
+                    except FileNotFoundError:
+                        data = []
+
+                    # convert data to json
+                    body = json.dumps(data, indent=2)
+                    response = f'HTTP/1.1 200 OK\r\nContent-Type:application/json\r\nContent-Length:{len(body)}\r\n\r\n{body}'
+
+                except (OSError, JSONDecodeError) as e:
+                    response = f'HTTP/1.1 500 Internal Server Error\r\n\r\nFile error: {e}'
                 except FileNotFoundError:
-                    response = 'HTTP/1.1 404 Not Found\r\n\r\nFile Not Found'
+                    response = 'HTTP/1.1 404 Not Found\r\n\r\nFile not found'
 
         # delete method response
         elif http_method == 'DELETE':
             try:
                 os.remove('data.json')
-                response = 'HTTP/1.1 200 Ok\r\n\r\nFile is deleted'
+                response = 'HTTP/1.1 200 OK\r\n\r\nFile is deleted'
             except FileNotFoundError:
                 response = 'HTTP/1.1 404 Not Found\r\n\r\nFile does not exist, could not delete'
+            except OSError as e:
+                response = f'HTTP/1.1 500 Internal Server Error\r\n\r\nFile error:{e}'
 
 
         # post method
         elif http_method == 'POST':
-            if path == '/':
-                body = ''
-                # seprate body from headers
-                if '\r\n\r\n' in req:
-                    _, _, body = req.partition('\r\n\r\n')
-                    body = body.strip()
-                    # print(f"body recieved  {repr(body)}") # debug
+            if path=='/':
                 try:
-                    if os.path.exists('data.json'):
-                        nonempty = os.path.getsize('data.json') > 0
+                    if '\r\n\r\n' not in req:
+                        response = (
+                            'HTTP/1.1 400 Bad Request\r\n\r\n'
+                            '\r\n'
+                            'Missing Body'
+                        )
                     else:
-                        nonempty = False
-                    with open('data.json', 'a') as out_file:
-                        if nonempty:
-                            out_file.write(',\n' + body)
-                        else:
-                            out_file.write(body)
-                    response = 'HTTP/1.1 200 OK\r\n\r\nFile updated/created'
-                except Exception as e:
-                    response = f'HTTP/1.1 500 Internal Server Error\r\n\r\n{e}'
+                        _, body = req.split('\r\n\r\n', 1)
+                        body = body.strip()
+                        print("body: ", body)
+                        new_data = json.loads(body)
+
+                        # reading existing data from json file
+                        try:
+                            with open('data.json', 'r', encoding='utf-8') as body_file:
+                                content= body_file.read().strip()
+                                data = json.loads(content) if content else []
+                        except FileNotFoundError:
+                                data = []
+                        data.append(new_data)
+
+                        # writing updated data to json file
+                        with open('data.json', 'w', encoding='utf-8') as out_file:
+                            json.dump(data, out_file, indent=2)
+                        response = 'HTTP/1.1 201 Created\r\n\r\nData added successfully'
+
+                except json.JSONDecodeError:
+                    response = 'HTTP/1.1 400 Bad Request\r\n\r\nInvalid Json'
+
+                except OSError as e:
+                    response = f'HTTP/1.1 500 Internal Server Error\r\n\r\nFile error:{e}'
+
+
+
+
+
+
+
+
 
         c_socket.sendall(response.encode('utf-8'))
         c_socket.close()
