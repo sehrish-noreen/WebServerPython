@@ -30,6 +30,9 @@ def build_response(status, body, content_type="text/plain"):
     ).encode("utf-8")
     return head + body_bytes
 
+# default response
+response = build_response("400 Bad Request", "Bad Request")
+
 # connection with client
 while True:
         c_socket, c_address = s_socket.accept()
