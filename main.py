@@ -138,8 +138,9 @@ while True:
                         except OSError as e:
                             response = build_response("500 Internal Server Error", f"File error: {e}")
             else:
-                response = build_response("405 Method Not Allowed", "Method not allowed")
-
+                response = build_response("404 Not Found", "File not found")
+        else:
+            response = build_response("405 Method Not Allowed", "Method not allowed")
         # send response to clients
         c_socket.sendall(response)
         c_socket.close()
