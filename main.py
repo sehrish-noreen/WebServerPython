@@ -52,7 +52,7 @@ while True:
 
         content_length = 0
         for line in header_bytes.decode("utf-8", errors="ignore").split("\r\n"):
-            if line.lower().startswith("content-length"):
+            if line.lower().startswith("content-length:"):
                 content_length = int(line.split(":", 1)[1].strip())
                 break
 
