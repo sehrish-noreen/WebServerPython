@@ -127,8 +127,8 @@ while True:
                                 data = json.loads(content) if content else []
                         except FileNotFoundError:
                                 data = []
-                                # backup file in case existing file is corrupt, and start new file
                         except json.JSONDecodeError:
+                            # backup file in case existing file is corrupt, and start new file
                             os.rename(DATA_FILE, DATA_FILE + ".bak")
                             data = []
                         # append new data into file and save
