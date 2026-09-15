@@ -116,28 +116,29 @@ while True:
                         new_data = json.loads(body)
                     except JSONDecodeError:
                         response = build_response("400 Bad Request", "Invalid Json")
-                    # reading existing data from json file
-                    try:
-                        with open(DATA_FILE, 'r', encoding='utf-8') as body_file:
-                            content= body_file.read().strip()
-                            data = json.loads(content) if content else []
-                    except FileNotFoundError:
+                    else:
+                        # reading existing data from json file
+                        try:
+                            with open(DATA_FILE, 'r', encoding='utf-8') as body_file:
+                                content= body_file.read().strip()
+                                data = json.loads(content) if content else []
+                        except FileNotFoundError:
+                                data = []
+                                # backup file in case existing file is corrupt, and start new file
+                        except json.JSONDecodeError:
+                            os.rename(DATA_FILE, DATA_FILE + ".bak")
                             data = []
-                            # backup file in case existing file is corrupt, and start new file
-                    except json.JSONDecodeError:
-                        os.rename(DATA_FILE, DATA_FILE + ".bak")
-                        data = []
-                    # append new data into file and save
-                    data.append(new_data)
-                    # writing updated data to json file
-                    try:
-                        with open(DATA_FILE, 'w', encoding='utf-8') as out_file:
-                            json.dump(data, out_file, indent=2)
-                        response = build_response("201 Created", "Data added successfully")
-                    except OSError as e:
-                        response = build_response("500 Internal Server Error", f"File error: {e}")
+                        # append new data into file and save
+                        data.append(new_data)
+                        # writing updated data to json file
+                        try:
+                            with open(DATA_FILE, 'w', encoding='utf-8') as out_file:
+                                json.dump(data, out_file, indent=2)
+                            response = build_response("201 Created", "Data added successfully")
+                        except OSError as e:
+                            response = build_response("500 Internal Server Error", f"File error: {e}")
             else:
-                response = build_response("404 Not Found", "File not found")
+                response = build_response("405 Method Not Allowed", "Method not allowed")
 
         # send response to clients
         c_socket.sendall(response)
