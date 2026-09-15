@@ -1,5 +1,4 @@
 from json.decoder import JSONDecodeError
-
 from builtins import FileNotFoundError, OSError
 
 import socket
@@ -22,21 +21,45 @@ print(f"listening on port {PORT}")
 while True:
         c_socket, c_address = s_socket.accept()
         print("connection from client: ", c_address)
-        req = c_socket.recv(1024).decode('utf-8') # fix todo
 
-        # skipping empty requests
-        if not req.strip():
+        # reading header and body bytes from client
+        raw = b""
+        while b"\r\n\r\n"not in raw:
+            chunk = c_socket.recv(4096)
+            if not chunk:
+                break
+            raw = raw + chunk
+
+        # handle empty request
+        if not raw.strip():
             c_socket.close()
             continue
 
-        # pass header
-        headers = req.split('\r\n')
+        header_bytes, _, body_bytes = raw.partition(b"\r\n\r\n")
+
+        content_length = 0
+        for line in header_bytes.decode("utf-8", errors="ignore").split("\r\n"):
+            if line.lower().startswith("content-length"):
+                content_length = int(line.split(":", 1)[1].strip())
+                break
+
+        while len(body_bytes) < content_length:
+            chunk = c_socket.recv(4096)
+            if not chunk:
+                break
+            body_bytes = body_bytes + chunk
+
+        # build request
+        req = (header_bytes + b"\r\n\r\n" + body_bytes).decode("utf-8", errors="ignore")
+
+        # parse request, header
+        headers = req.split("\r\n")
         request_line = headers[0].split()
-        if len(request_line)<2:
+        if len(request_line) < 2:
             c_socket.close()
             continue
 
-        http_method = request_line[0]
+        http_method = request_line[0].upper()
         path = request_line[1]
 
         # default response
@@ -109,14 +132,6 @@ while True:
 
                 except OSError as e:
                     response = f'HTTP/1.1 500 Internal Server Error\r\n\r\nFile error:{e}'
-
-
-
-
-
-
-
-
 
         c_socket.sendall(response.encode('utf-8'))
         c_socket.close()
